@@ -1,0 +1,19 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: "dev-hub-test-demo"     # set value defined in the (scaffolding/golden path) template
+                                    # dump is a filter:
+                                    # https://backstage.io/docs/features/software-templates/builtin-actions/
+                                    # https://backstage.io/docs/features/software-templates/writing-templates/#built-in-filters
+  annotations:
+#    jenkins.io/job-full-name: <jenkins-instance-name-from-rhdh-config>:<team>/artistLookup-build<job-name>
+#    https://jenkins.example.com/job/teamA/job/artistLookup-build becomes <jenkins-instance-name>/teamA/artistLookup-build
+    jenkins.io/job-full-name: default-jenkins:demo-project/demo-project-demo-app-pipeline
+#    !!! The Red Hat OpenShift Dev Spaces instance is not accessible using the source code editor if the backstage.io/kubernetes-namespace annotation is added to the catalog-info.yaml file.
+    # https://www.npmjs.com/package/@janus-idp/backstage-plugin-topology 
+    backstage.io/kubernetes-namespace: demo-project 
+    backstage.io/kubernetes-id: dev-hub-test-demo
+spec:
+  type: service
+  lifecycle: production
+  owner: "user1"
