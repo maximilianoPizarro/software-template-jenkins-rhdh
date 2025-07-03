@@ -1,0 +1,109 @@
+// Jenkinsfile
+// This pipeline builds, tests, and optionally deploys a Node.js service.
+// It's designed to be part of a repository managed by Backstage.
+
+pipeline {
+    agent {
+        // You can use a specific Docker image for your build environment
+        // or a Jenkins agent label.
+        docker {
+            image 'node:18-alpine' // Or a more specific version/image
+            args '-v $HOME/.npm:/root/.npm' // Cache npm dependencies
+        }
+    }
+
+    environment {
+        // Define environment variables
+        SERVICE_NAME = env.JOB_NAME.tokenize('/')[0] // Assumes job name like 'my-service/main'
+        // For production deployments, you'd likely use credentials here
+        // KUBERNETES_NAMESPACE = 'your-app-namespace'
+        // DOCKER_REGISTRY_URL = 'your.docker.registry.com'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    // Ensure the repository is checked out
+                    checkout scm
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm ci' // `npm ci` for clean install in CI environments
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                sh 'npm run lint' // Assuming you have a lint script
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'npm test' // Run your tests
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    def dockerImage = "${env.DOCKER_REGISTRY_URL}/${SERVICE_NAME}:${env.BUILD_NUMBER}"
+                    // Build the Docker image
+                    sh "docker build -t ${dockerImage} ."
+                    // Push the Docker image to a registry
+                    // withCredentials([usernamePassword(credentialsId: 'docker-registry-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    //     sh "docker login ${env.DOCKER_REGISTRY_URL} -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
+                    //     sh "docker push ${dockerImage}"
+                    // }
+                    // Store the image name for later deployment if needed
+                    env.DOCKER_IMAGE_TO_DEPLOY = dockerImage
+                }
+            }
+        }
+
+        stage('Deploy (Manual)') {
+            when {
+                // This stage only runs if explicitly approved for a manual deployment
+                // or on a specific branch (e.g., 'main' after a successful build)
+                expression { env.BRANCH_NAME == 'main' || env.DEPLOY_TO_PROD == 'true' }
+            }
+            steps {
+                input message: 'Proceed with deployment to production?', ok: 'Deploy'
+                script {
+                    // Example: Deploy to Kubernetes
+                    // sh "kubectl config use-context your-kubernetes-cluster"
+                    // sh "helm upgrade --install ${SERVICE_NAME} ./helm/${SERVICE_NAME} --namespace ${KUBERNETES_NAMESPACE} --set image.tag=${env.BUILD_NUMBER} --set image.repository=${env.DOCKER_REGISTRY_URL}/${SERVICE_NAME}"
+                    echo "Service ${SERVICE_NAME} deployed with image ${env.DOCKER_IMAGE_TO_DEPLOY}."
+                }
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                // Clean up any build artifacts or temporary files if necessary
+                deleteDir()
+            }
+        }
+    }
+
+    post {
+        always {
+            // Actions that always run regardless of stage success/failure
+            echo "Pipeline finished for ${SERVICE_NAME}."
+        }
+        success {
+            // Actions on successful pipeline
+            // Example: Notify Backstage of successful build via API
+            // sh "curl -X POST -H 'Content-Type: application/json' -d '{\"service\": \"${SERVICE_NAME}\", \"status\": \"SUCCESS\"}' https://backstage.your-company.com/api/jenkins-status"
+        }
+        failure {
+            // Actions on pipeline failure
+            // Example: Notify Slack/Teams
+            // slackSend channel: '#dev-alerts', message: "Pipeline failed for ${SERVICE_NAME}: ${env.BUILD_URL}"
+        }
+    }
+}
