@@ -39,16 +39,16 @@ spec:
               title: Repo Host
               type: string
               description: Your SCM host
-              default: gitlab-gitlab.apps.cluster-2lb67.2lb67.sandbox921.opentlc.com
+              default: gitlab-gitlab.apps.cluster-bhk9g.bhk9g.sandbox2098.opentlc.com
               enum:
-                - gitlab-gitlab.apps.cluster-2lb67.2lb67.sandbox921.opentlc.com
+                - gitlab-gitlab.apps.cluster-bhk9g.bhk9g.sandbox2098.opentlc.com
             owner:
               title: Repo Owner
               type: string
               description: Your SCM host organization/group
-              default: development
+              default: parasol
               enum:
-                - development
+                - parasol
   steps:
     - id: fetch-base
       name: Fetch Base Skeleton
@@ -94,4 +94,4 @@ spec:
         icon: catalog
         entityRef: ${{ steps.register.output.entityRef }}
       - title: Open in Jenkins # Link directly to the newly created Jenkins job
-        url: 'https://jenkins-cicd.apps.cluster-2lb67.2lb67.sandbox921.opentlc.com/job/${{ parameters.name }}' # Adjust this URL
+        url: 'https://jenkins-jenkins.apps.cluster-bhk9g.bhk9g.sandbox2098.opentlc.com/job/${{ parameters.name }}' # Adjust this URL
