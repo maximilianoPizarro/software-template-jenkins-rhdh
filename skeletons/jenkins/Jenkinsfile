@@ -1,109 +1,115 @@
-// Jenkinsfile
-// This pipeline builds, tests, and optionally deploys a Node.js service.
-// It's designed to be part of a repository managed by Backstage.
+// Jenkinsfile para construir y desplegar una aplicación .NET en OpenShift
+// Este pipeline asume que Jenkins está configurado con acceso a un cluster OpenShift
+// y que la CLI de OpenShift (oc) está disponible en el agente de Jenkins.
 
 pipeline {
-    agent {
-        // You can use a specific Docker image for your build environment
-        // or a Jenkins agent label.
-        docker {
-            image 'node:18-alpine' // Or a more specific version/image
-            args '-v $HOME/.npm:/root/.npm' // Cache npm dependencies
-        }
-    }
+    agent any // Define que el pipeline puede ejecutarse en cualquier agente disponible
 
-    environment {
-        // Define environment variables
-        SERVICE_NAME = env.JOB_NAME.tokenize('/')[0] // Assumes job name like 'my-service/main'
-        // For production deployments, you'd likely use credentials here
-        // KUBERNETES_NAMESPACE = 'your-app-namespace'
-        // DOCKER_REGISTRY_URL = 'your.docker.registry.com'
+    // Parámetros configurables para el pipeline
+    parameters {
+        string(name: 'OPENSHIFT_PROJECT', defaultValue: 'my-dotnet-app-dev', description: 'Nombre del proyecto de OpenShift donde se desplegará la aplicación.')
+        string(name: 'APP_NAME', defaultValue: 'dotnet-app', description: 'Nombre de la aplicación y del ImageStream/DeploymentConfig.')
+        string(name: 'DOCKERFILE_PATH', defaultValue: 'app/Dockerfile', description: 'Ruta al Dockerfile dentro del repositorio.')
+        string(name: 'DOTNET_PROJECT_PATH', defaultValue: 'app/app.csproj', description: 'Ruta al archivo .csproj principal de la aplicación.')
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout SCM') {
+            steps {
+                // Clona el repositorio de Git.
+                // Asegúrate de que las credenciales de Git estén configuradas en Jenkins si el repositorio es privado.
+                git branch: 'main', url: 'https://github.com/maximilianoPizarro/software-template-jenkins-rhdh.git'
+            }
+        }
+
+        stage('Build .NET Application') {
             steps {
                 script {
-                    // Ensure the repository is checked out
-                    checkout scm
+                    // Navega al directorio de la aplicación
+                    dir('skeleton/app') {
+                        // Restaura las dependencias de .NET
+                        sh 'dotnet restore'
+                        // Publica la aplicación para producción.
+                        // --no-restore: No restaura los paquetes (ya se hizo).
+                        // -c Release: Construye en modo Release.
+                        // -o ./publish: Publica los archivos en el directorio 'publish'.
+                        sh 'dotnet publish --no-restore -c Release -o ./publish'
+                    }
                 }
             }
         }
 
-        stage('Install Dependencies') {
-            steps {
-                sh 'npm ci' // `npm ci` for clean install in CI environments
-            }
-        }
-
-        stage('Lint') {
-            steps {
-                sh 'npm run lint' // Assuming you have a lint script
-            }
-        }
-
-        stage('Test') {
-            steps {
-                sh 'npm test' // Run your tests
-            }
-        }
-
-        stage('Build Docker Image') {
+        stage('Login to OpenShift') {
             steps {
                 script {
-                    def dockerImage = "${env.DOCKER_REGISTRY_URL}/${SERVICE_NAME}:${env.BUILD_NUMBER}"
-                    // Build the Docker image
-                    sh "docker build -t ${dockerImage} ."
-                    // Push the Docker image to a registry
-                    // withCredentials([usernamePassword(credentialsId: 'docker-registry-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    //     sh "docker login ${env.DOCKER_REGISTRY_URL} -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
-                    //     sh "docker push ${dockerImage}"
-                    // }
-                    // Store the image name for later deployment if needed
-                    env.DOCKER_IMAGE_TO_DEPLOY = dockerImage
+                    // Asegúrate de que el agente de Jenkins tenga la CLI de OpenShift (oc) instalada y configurada.
+                    // Se asume que ya hay un token de OpenShift o que el agente puede autenticarse.
+                    // Para autenticación con token: oc login --token=<your_token> --server=<your_openshift_api_url>
+                    // Para autenticación con kubeconfig: oc login --kubeconfig=<path_to_kubeconfig>
+                    // Para este ejemplo, asumimos que el login ya está manejado por el entorno de Jenkins o un plugin.
+                    // Si necesitas un login explícito, descomenta y configura la siguiente línea:
+                    // sh "oc login --token=${OPENSHIFT_TOKEN} --server=${OPENSHIFT_API_URL}"
+                    sh "oc project ${OPENSHIFT_PROJECT}"
+                    echo "Logged into OpenShift project: ${OPENSHIFT_PROJECT}"
                 }
             }
         }
 
-        stage('Deploy (Manual)') {
-            when {
-                // This stage only runs if explicitly approved for a manual deployment
-                // or on a specific branch (e.g., 'main' after a successful build)
-                expression { env.BRANCH_NAME == 'main' || env.DEPLOY_TO_PROD == 'true' }
-            }
+        stage('Apply OpenShift Resources') {
             steps {
-                input message: 'Proceed with deployment to production?', ok: 'Deploy'
                 script {
-                    // Example: Deploy to Kubernetes
-                    // sh "kubectl config use-context your-kubernetes-cluster"
-                    // sh "helm upgrade --install ${SERVICE_NAME} ./helm/${SERVICE_NAME} --namespace ${KUBERNETES_NAMESPACE} --set image.tag=${env.BUILD_NUMBER} --set image.repository=${env.DOCKER_REGISTRY_URL}/${SERVICE_NAME}"
-                    echo "Service ${SERVICE_NAME} deployed with image ${env.DOCKER_IMAGE_TO_DEPLOY}."
+                    // Aplica los recursos de OpenShift (ImageStream, BuildConfig, Service, DeploymentConfig, Route).
+                    // Esto creará o actualizará los recursos necesarios en OpenShift.
+                    // Los archivos YAML se deben colocar en el mismo directorio que el Jenkinsfile o en una ruta accesible.
+                    sh "oc apply -f openshift/image-stream.yaml -n ${OPENSHIFT_PROJECT}"
+                    sh "oc apply -f openshift/build-config.yaml -n ${OPENSHIFT_PROJECT}"
+                    sh "oc apply -f openshift/service.yaml -n ${OPENSHIFT_PROJECT}"
+                    sh "oc apply -f openshift/deployment-config.yaml -n ${OPENSHIFT_PROJECT}"
+                    sh "oc apply -f openshift/route.yaml -n ${OPENSHIFT_PROJECT}"
+                    echo "OpenShift resources applied."
                 }
             }
         }
 
-        stage('Cleanup') {
+        stage('Start OpenShift Build') {
             steps {
-                // Clean up any build artifacts or temporary files if necessary
-                deleteDir()
+                script {
+                    // Inicia un nuevo build en OpenShift usando el BuildConfig creado.
+                    // La fuente para el build será el directorio 'skeleton/app/publish' que contiene la aplicación publicada.
+                    // Esto empujará el contenido de 'publish' al contexto de build de OpenShift.
+                    sh "oc start-build ${APP_NAME} --from-dir=skeleton/app/publish --follow -n ${OPENSHIFT_PROJECT}"
+                    echo "OpenShift build started and completed for ${APP_NAME}."
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    // Opcional: Espera a que el DeploymentConfig se despliegue completamente.
+                    // Esto asegura que la nueva versión de la aplicación esté disponible.
+                    sh "oc rollout status dc/${APP_NAME} -n ${OPENSHIFT_PROJECT}"
+                    echo "Deployment for ${APP_NAME} is complete."
+
+                    // Opcional: Obtener la URL de la ruta (Route) para acceder a la aplicación.
+                    def routeUrl = sh(script: "oc get route ${APP_NAME} -o jsonpath='{.spec.host}' -n ${OPENSHIFT_PROJECT}", returnStdout: true).trim()
+                    echo "Application URL: http://${routeUrl}"
+                }
             }
         }
     }
 
     post {
         always {
-            // Actions that always run regardless of stage success/failure
-            echo "Pipeline finished for ${SERVICE_NAME}."
-        }
-        success {
-            // Actions on successful pipeline
-            // Example: Notify Backstage of successful build via API
-            // sh "curl -X POST -H 'Content-Type: application/json' -d '{\"service\": \"${SERVICE_NAME}\", \"status\": \"SUCCESS\"}' https://backstage.your-company.com/api/jenkins-status"
+            // Pasos que se ejecutan siempre al finalizar el pipeline (éxito o fallo).
+            cleanWs() // Limpia el espacio de trabajo del agente de Jenkins.
         }
         failure {
-            // Actions on pipeline failure
-            // Example: Notify Slack/Teams
-            // slackSend channel: '#dev-alerts', message: "Pipeline failed for ${SERVICE_NAME}: ${env.BUILD_URL}"
+            echo "Pipeline failed. Check logs for details."
+            // Aquí puedes añadir notificaciones (email, Slack, etc.)
+        }
+        success {
+            echo "Pipeline completed successfully!"
         }
     }
 }
