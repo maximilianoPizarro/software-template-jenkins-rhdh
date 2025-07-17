@@ -2,53 +2,73 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: nodejs-service-template
-  title: Node.js Service with Jenkins CI/CD
-  description: Creates a new Node.js service with a pre-configured Jenkinsfile.
+  name: dotnet-frontend-template
+  title: Create a .NET Frontend application in Azure DevOps with a CI pipeline
+  description: Create a starter .NET frontend application with a CI pipeline
+  tags:
+    - jenkins
+    - dotnet
 spec:
   owner: rhdh
   type: service
   parameters:
-    - title: Basic Information
+    - title: Choose a location
+      required:
+        - orgName
+        - projectName
+        - repoName
       properties:
-        name:
-          title: Project Name
+        orgName:
+          title: Organization
           type: string
-          description: Unique name of the service.
-          ui:autofocus: true
+          description: The Organization that this repo will belong to
+        projectName:
+          title: Project
+          type: string
+          description: The Project that this repo will belong to
+        repoName:
+          title: Repository
+          type: string
+          description: The name of the repository
+
+    - title: Provide information about the new component
+      required:
+        - owner
+        - system
+        - port
+      properties:
+        title:
+          title: Title
+          type: string
+          description: The title of the component
         description:
           title: Description
           type: string
-          description: A brief description of the service.
+          description: Help others understand what this component is for
         owner:
           title: Owner
           type: string
-          description: Owner of the new component
-          ui:field: OwnerPicker
+          description: The owner of the component
+          ui:field: EntityPicker
           ui:options:
-            allowedKinds: [ 'Group' ]
-    - title: Application repository Information
-      required:
-        - repo
-      properties:
-        repo:
-          title: Repository Location
-          type: object
-          properties:
-            host:
-              title: Repo Host
-              type: string
-              description: Your SCM host
-              default: gitlab-gitlab.apps.cluster-bhk9g.bhk9g.sandbox2098.opentlc.com
-              enum:
-                - gitlab-gitlab.apps.cluster-bhk9g.bhk9g.sandbox2098.opentlc.com
-            owner:
-              title: Repo Owner
-              type: string
-              description: Your SCM host organization/group
-              default: parasol
-              enum:
-                - parasol
+            catalogFilter:
+              kind:
+                - Group
+                - User
+        system:
+          title: System
+          type: string
+          description: The system that the component belongs to
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind:
+                - System
+        port:
+          title: Port
+          type: number
+          default: 5000
+          description: Override the port exposed for the application
   steps:
     - id: fetch-base
       name: Fetch Base Skeleton
@@ -74,23 +94,66 @@ spec:
           repo: '${{ parameters.repo.host }}'
           owner: '${{ parameters.repo.owner }}'
           # You might also pass a specific Jenkinsfile path if it's not at the root
-          # jenkinsfilePath: 'cicd/Jenkinsfile'
+          jenkinsfilePath: '../../../skeletons/jenkins/Jenkinsfile'
         # Any other parameters needed to create the Jenkins job, e.g., credentials,
         # Jenkins instance URL (if you have multiple and the action supports it)
         # jenkinsInstance: 'your-jenkins-instance-id'
 
+    - id: sourceCodeTemplate
+      name: Generating the Source Code Component
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          # azure devops uses `my-project/my-repo`
+          orgName: ${{ parameters.projectName }}
+          repoName: ${{ parameters.repoName }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          title: ${{ parameters.title }}
+          description: ${{ parameters.description }}
+          port: ${{ parameters.port }}
+          applicationType: website
+          sourceControl: github.com
+
+    - id: catalogTemplate
+      name: Generating the Catalog Info Component
+      action: fetch:template
+      input:
+        url: ../../../skeletons/catalog-info/
+        values:
+          # azure devops uses `my-project/my-repo`
+          orgName: ${{ parameters.projectName }}
+          repoName: ${{ parameters.repoName }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          title: ${{ parameters.title }}
+          description: ${{ parameters.description }}
+          port: ${{ parameters.port }}
+          applicationType: website
+          sourceControl: github.com
+
+    - id: publish
+      name: Publishing to the Source Code Repository
+      action: publish:azure
+      input:
+        allowedHosts: ['github.com']
+        description: ${{ parameters.description }}
+        repoUrl: github.com?owner=${{ parameters.projectName }}&repo=${{ parameters.repoName }}&organization=${{ parameters.orgName }}
+        defaultBranch: main
+
     - id: register
-      name: Register Component
+      name: Registering the Catalog Info Component
       action: catalog:register
       input:
-        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
-        catalogInfoPath: '/catalog-info.yaml' # Path to the Backstage catalog-info.yaml within the repo
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
 
   output:
     links:
-      - title: Source Code Repository
+      - title: Open the Source Code Repository
         url: ${{ steps.publish.output.remoteUrl }}
-      - title: Open Component in catalog
+      - title: Open the Catalog Info Component
         icon: catalog
         entityRef: ${{ steps.register.output.entityRef }}
       - title: Open in Jenkins # Link directly to the newly created Jenkins job
