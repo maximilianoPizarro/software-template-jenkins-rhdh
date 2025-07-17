@@ -58,7 +58,7 @@
       <submoduleCfg class="empty-list"/>
       <extensions/>
     </scm>
-    <scriptPath>./skeletons/jenkins/Jenkinsfile</scriptPath> <!-- La ruta a tu Jenkinsfile dentro del repositorio -->
+    <scriptPath>Jenkinsfile</scriptPath> <!-- La ruta a tu Jenkinsfile dentro del repositorio -->
     <lightweight>true</lightweight>
   </definition>
   <triggers/>
