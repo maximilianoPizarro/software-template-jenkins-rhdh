@@ -16,12 +16,12 @@
       <parameterDefinitions>
         <hudson.model.StringParameterDefinition>
           <name>OPENSHIFT_PROJECT</name>
-          <defaultValue>my-dotnet-app-dev</defaultValue>
+          <defaultValue>${{ parameters.projectName }}-dev</defaultValue>
           <trim>false</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>APP_NAME</name>
-          <defaultValue>dotnet-app</defaultValue>
+          <defaultValue>${{ parameters.projectName }}</defaultValue>
           <trim>false</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
@@ -46,13 +46,13 @@
       </branches>
       <userRemoteConfigs>
         <hudson.plugins.git.UserRemoteConfig>
-          <url>https://github.com/maximilianoPizarro/software-template-jenkins-rhdh.git</url>
+          <url>https://github.com/${{ parameters.orgName }}/${{ parameters.repoName }}.git<url>
           <!-- Si el repositorio es privado, necesitarás añadir credenciales aquí.
                Por ejemplo: <credentialsId>your-jenkins-git-credentials-id</credentialsId> -->
         </hudson.plugins.git.UserRemoteConfig>
       </userRemoteConfigs>
       <browser class="hudson.plugins.git.browser.GithubWeb">
-        <url>https://github.com/maximilianoPizarro/software-template-jenkins-rhdh</url>
+        <url>https://github.com/${{ parameters.orgName }}/${{ parameters.repoName }}.git</url>
       </browser>
       <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
       <submoduleCfg class="empty-list"/>

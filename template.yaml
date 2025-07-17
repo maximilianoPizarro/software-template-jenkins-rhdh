@@ -92,6 +92,7 @@ spec:
       action: jenkins:job:create # This action needs to be registered in your Backstage backend
       input:
         jobName: '${{ parameters.projectName }}'
+        folderName: '${{ parameters.projectName }}'
         # The 'repoUrl' or 'gitSource' would tell Jenkins where to find the Jenkinsfile
         # The exact parameters depend on your `jenkins:job:create` action implementation
         gitSource:
@@ -100,7 +101,7 @@ spec:
           # You might also pass a specific Jenkinsfile path if it's not at the root
         jenkinsfilePath: 'Jenkinsfile'
         configPath: 'config.xml'
-        folderName: test-folder
+
         # Any other parameters needed to create the Jenkins job, e.g., credentials,
         # Jenkins instance URL (if you have multiple and the action supports it)
         # jenkinsInstance: 'your-jenkins-instance-id'
