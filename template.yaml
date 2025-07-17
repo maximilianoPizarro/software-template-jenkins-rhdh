@@ -98,7 +98,7 @@ spec:
           repo: '${{ parameters.repo.host }}'
           owner: '${{ parameters.repo.owner }}'
           # You might also pass a specific Jenkinsfile path if it's not at the root
-          jenkinsfilePath: './skeletons/jenkins/Jenkinsfile'
+        jenkinsfilePath: './skeletons/jenkins/Jenkinsfile'
         # Any other parameters needed to create the Jenkins job, e.g., credentials,
         # Jenkins instance URL (if you have multiple and the action supports it)
         # jenkinsInstance: 'your-jenkins-instance-id'
