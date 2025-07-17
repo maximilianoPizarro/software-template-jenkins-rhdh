@@ -91,6 +91,16 @@ spec:
       name: Create Jenkins CI Job
       action: jenkins:job:create # This action needs to be registered in your Backstage backend
       input:
+        values:
+          orgName: ${{ parameters.projectName }}
+          repoName: ${{ parameters.repoName }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          title: ${{ parameters.title }}
+          description: ${{ parameters.description }}
+          port: ${{ parameters.port }}
+          applicationType: website
+          sourceControl: github.com
         jobName: '${{ parameters.projectName }}'
         folderName: '${{ parameters.projectName }}'
         # The 'repoUrl' or 'gitSource' would tell Jenkins where to find the Jenkinsfile
