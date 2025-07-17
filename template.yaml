@@ -3,7 +3,7 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: dotnet-frontend-template
-  title: Create a .NET Frontend application in Azure DevOps with a CI pipeline
+  title: Create a .NET Frontend application in github DevOps with a CI pipeline
   description: Create a starter .NET frontend application with a CI pipeline
   tags:
     - jenkins
@@ -70,18 +70,22 @@ spec:
           default: 5000
           description: Override the port exposed for the application
   steps:
-    - id: fetch-base
-      name: Fetch Base Skeleton
+
+    - id: sourceCodeTemplate
+      name: Generating the Source Code Component
       action: fetch:template
       input:
-        url: ./skeleton # Your template skeleton directory containing the Jenkinsfile
-
-    - id: publish
-      name: Publish
-      action: publish:gitlab
-      input:
-        repoUrl: "${{ parameters.repo.host }}?owner=${{ parameters.repo.owner }}&repo=${{ parameters.name }}"
-        repoVisibility: public
+        url: ./skeleton
+        values:
+          orgName: ${{ parameters.projectName }}
+          repoName: ${{ parameters.repoName }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          title: ${{ parameters.title }}
+          description: ${{ parameters.description }}
+          port: ${{ parameters.port }}
+          applicationType: website
+          sourceControl: github.com
 
     - id: create-jenkins-job # This is where your jenkins:job:create action comes in!
       name: Create Jenkins CI Job
@@ -94,35 +98,18 @@ spec:
           repo: '${{ parameters.repo.host }}'
           owner: '${{ parameters.repo.owner }}'
           # You might also pass a specific Jenkinsfile path if it's not at the root
-          jenkinsfilePath: '../../../skeletons/jenkins/Jenkinsfile'
+          jenkinsfilePath: './skeletons/jenkins/Jenkinsfile'
         # Any other parameters needed to create the Jenkins job, e.g., credentials,
         # Jenkins instance URL (if you have multiple and the action supports it)
         # jenkinsInstance: 'your-jenkins-instance-id'
-
-    - id: sourceCodeTemplate
-      name: Generating the Source Code Component
-      action: fetch:template
-      input:
-        url: ./skeleton
-        values:
-          # azure devops uses `my-project/my-repo`
-          orgName: ${{ parameters.projectName }}
-          repoName: ${{ parameters.repoName }}
-          owner: ${{ parameters.owner }}
-          system: ${{ parameters.system }}
-          title: ${{ parameters.title }}
-          description: ${{ parameters.description }}
-          port: ${{ parameters.port }}
-          applicationType: website
-          sourceControl: github.com
 
     - id: catalogTemplate
       name: Generating the Catalog Info Component
       action: fetch:template
       input:
-        url: ../../../skeletons/catalog-info/
+        url: ./skeletons/catalog-info/
         values:
-          # azure devops uses `my-project/my-repo`
+          # github devops uses `my-project/my-repo`
           orgName: ${{ parameters.projectName }}
           repoName: ${{ parameters.repoName }}
           owner: ${{ parameters.owner }}
@@ -135,7 +122,7 @@ spec:
 
     - id: publish
       name: Publishing to the Source Code Repository
-      action: publish:azure
+      action: publish:github
       input:
         allowedHosts: ['github.com']
         description: ${{ parameters.description }}
