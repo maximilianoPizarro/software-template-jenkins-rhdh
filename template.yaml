@@ -30,6 +30,8 @@ spec:
           title: Repository
           type: string
           description: The name of the repository
+          default: dotnet-frontend
+          pattern: '^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$'
 
     - title: Provide information about the new component
       required:
@@ -40,6 +42,7 @@ spec:
         title:
           title: Title
           type: string
+          default: .NET Frontend Application
           description: The title of the component
         description:
           title: Description
@@ -69,6 +72,11 @@ spec:
           type: number
           default: 5000
           description: Override the port exposed for the application
+        jenkinsServer:
+          title: Jenkins Server
+          type: string
+          description: The Jenkins server to use
+          default: http://jenkins-rhdh-jenkins.apps.cluster-g2452.g2452.example.opentlc.com
   steps:
 
     - id: sourceCodeTemplate
@@ -237,4 +245,4 @@ spec:
         icon: catalog
         entityRef: ${{ steps.register.output.entityRef }}
       - title: Open in Jenkins # Link directly to the newly created Jenkins job
-        url: 'https://jenkins-jenkins.apps.rosa.m5cq8-ma8k4-7s6.ak3p.p3.openshiftapps.com/job/${{ parameters.projectName }}' # Adjust this URL
+        url: '${{ parameters.jenkinsServer }}/job/${{ parameters.projectName }}' # Adjust this URL
