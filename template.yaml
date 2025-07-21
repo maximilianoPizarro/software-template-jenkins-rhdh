@@ -22,10 +22,12 @@ spec:
           title: Organization
           type: string
           description: The Organization that this repo will belong to
+          default: maximilianoPizarro
         projectName:
           title: Project
           type: string
           description: The Project that this repo will belong to
+          default: dotnet-frontend
         repoName:
           title: Repository
           type: string
