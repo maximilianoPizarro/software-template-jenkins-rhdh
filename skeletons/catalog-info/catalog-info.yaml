@@ -25,9 +25,7 @@ metadata:
     {%- if values.ci == "../../../skeletons/tekton/" %}
     tektonci/build-namespace: ${{ values.namespace }}
     {%- endif %}
-    {%- if values.ci == "../../../skeletons/jenkins/" %}
     jenkins.io/job-full-name: ${{ values.jenkinsInstance }}:${{ values.namespace }}/${{ values.name }}
-    {%- endif %} 
     backstage.io/kubernetes-id: ${{ name }}
     backstage.io/techdocs-ref: dir:.
     {%- if values.sourceControl == "gitlab.com" %}
