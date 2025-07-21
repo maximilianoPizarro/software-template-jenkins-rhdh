@@ -77,7 +77,8 @@ spec:
       input:
         url: ./skeleton
         values:
-          orgName: ${{ parameters.projectName }}
+          projectName: ${{ parameters.projectName }}
+          orgName: ${{ parameters.orgName }}
           repoName: ${{ parameters.repoName }}
           owner: ${{ parameters.owner }}
           system: ${{ parameters.system }}
@@ -92,7 +93,8 @@ spec:
       action: jenkins:job:create # This action needs to be registered in your Backstage backend
       input:
         values:
-          orgName: ${{ parameters.projectName }}
+          projectName: ${{ parameters.projectName }}
+          orgName: ${{ parameters.orgName }}
           repoName: ${{ parameters.repoName }}
           owner: ${{ parameters.owner }}
           system: ${{ parameters.system }}
@@ -123,7 +125,8 @@ spec:
         url: ./skeletons/catalog-info/
         values:
           # github devops uses `my-project/my-repo`
-          orgName: ${{ parameters.projectName }}
+          projectName: ${{ parameters.projectName }}
+          orgName: ${{ parameters.orgName }}
           repoName: ${{ parameters.repoName }}
           owner: ${{ parameters.owner }}
           system: ${{ parameters.system }}
