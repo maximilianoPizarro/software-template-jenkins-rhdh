@@ -74,7 +74,7 @@ spec:
           type: number
           default: 5000
           description: Override the port exposed for the application
-        jenkinsServer:
+        jenkinsBaseUrl:
           title: Jenkins Server
           type: string
           description: The Jenkins server to use
@@ -247,4 +247,4 @@ spec:
         icon: catalog
         entityRef: ${{ steps.register.output.entityRef }}
       - title: Open in Jenkins # Link directly to the newly created Jenkins job
-        url: '${{ parameters.jenkinsServer }}/job/${{ parameters.projectName }}' # Adjust this URL
+        url: '${{ parameters.jenkinsBaseUrl }}/job/${{ parameters.projectName }}' # Adjust this URL
