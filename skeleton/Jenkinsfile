@@ -18,7 +18,7 @@ pipeline {
             steps {
                 // Clona el repositorio de Git.
                 // Asegúrate de que las credenciales de Git estén configuradas en Jenkins si el repositorio es privado.
-                git branch: 'main', url: 'https://{{ values.sourceControl }}/{{ values.orgName }}/{{ values.repoName }}'
+                git branch: 'main', url: 'https://${{ values.sourceControl }}/${{ values.orgName }}/${{ values.repoName }}'
             }
         }
 
