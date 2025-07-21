@@ -19,24 +19,9 @@ pipeline {
                 image 'openshift/origin-cli:latest' // Or your custom image with 'oc' and 'git'
                 command 'cat'
                 ttyEnabled true
-                # cpu '500m' // Optional: Request CPU
-                # memory '1Gi' // Optional: Request Memory
+                cpu '500m' // Optional: Request CPU
+                memory '1Gi' // Optional: Request Memory
             }
-            // Optional: If you need to mount a volume, for example, for shared cache or kubeconfig
-            # yaml """
-            #   apiVersion: v1
-            #   kind: Pod
-            #   spec:
-            #     containers:
-            #     - name: build
-            #       volumeMounts:
-            #       - mountPath: /var/run/docker.sock # Example for Docker-in-Docker if needed (not for S2I)
-            #         name: docker-sock
-            #     volumes:
-            #     - name: docker-sock
-            #       hostPath:
-            #         path: /var/run/docker.sock
-            # """
         }
     }
 
