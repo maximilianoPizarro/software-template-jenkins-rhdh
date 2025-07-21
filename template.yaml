@@ -163,12 +163,11 @@ spec:
                 <userRemoteConfigs>
                   <hudson.plugins.git.UserRemoteConfig>
                     <url>https://github.com/${{ parameters.orgName }}/${{ parameters.repoName }}</url>
-                    <!-- Si el repositorio es privado, necesitarás añadir credenciales aquí.
-                         Por ejemplo: <credentialsId>your-jenkins-git-credentials-id</credentialsId> -->
+                    <credentialsId>github-pat-for-ci</credentialsId>
                   </hudson.plugins.git.UserRemoteConfig>
                 </userRemoteConfigs>
                 <browser class="hudson.plugins.git.browser.GithubWeb">
-                  <url>https://github.com/${{ values.sourceControl }}/${{ parameters.orgName }}/${{ parameters.repoName }}</url>
+                  <url>https://github.com${{ values.sourceControl }}/${{ parameters.orgName }}/${{ parameters.repoName }}</url>
                 </browser>
                 <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
                 <submoduleCfg class="empty-list"/>
