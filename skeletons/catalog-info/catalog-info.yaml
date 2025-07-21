@@ -6,51 +6,51 @@
 
 apiVersion: backstage.io/v1alpha1
 {%- if values.entityKind %}
-kind: {{ values.entityKind }}
+kind: ${{ values.entityKind }}
 {%- else %}
 kind: Component
 {%- endif %}
 metadata:
-  name: {{ name }}
+  name: ${{ name }}
   {%- if values.title %}
-  title: {{ values.title }}
+  title: ${{ values.title }}
   {%- endif %}
   {%- if values.description %}
-  description: {{ values.description }}
+  description: ${{ values.description }}
   {%- endif %}
   annotations:
     {%- if values.hostUrl %}
-    argocd/app-name: {{ name }}
+    argocd/app-name: ${{ name }}
     {%- endif %}
     {%- if values.ci == "../../../skeletons/tekton/" %}
-    tektonci/build-namespace: {{ values.namespace }}
+    tektonci/build-namespace: ${{ values.namespace }}
     {%- endif %}
     {%- if values.ci == "../../../skeletons/jenkins/" %}
-    jenkins.io/job-full-name: {{ values.jenkinsInstance }}:{{ values.namespace }}/{{ name }}
+    jenkins.io/job-full-name: ${{ values.jenkinsInstance }}:${{ values.namespace }}/${{ values.name }}
     {%- endif %} 
-    backstage.io/kubernetes-id: {{ name }}
+    backstage.io/kubernetes-id: ${{ name }}
     backstage.io/techdocs-ref: dir:.
     {%- if values.sourceControl == "gitlab.com" %}
-    gitlab.com/project-slug: {{ values.orgName }}/{{ values.repoName }}
+    gitlab.com/project-slug: ${{ values.orgName }}/${{ values.repoName }}
     {%- elif values.sourceControl == "github.com" %}
-    github.com/project-slug: {{ values.orgName }}/{{ values.repoName }}
+    github.com/project-slug: ${{ values.orgName }}/${{ values.repoName }}
     {%- endif %}
 spec:
-  type: {{ values.applicationType }}
+  type: ${{ values.applicationType }}
   {%- if values.system %}
-  system: {{ values.system }}
+  system: ${{ values.system }}
   {%- endif %}
   {%- if values.lifecycle %}
-  lifecycle: {{ values.lifecycle }}
+  lifecycle: ${{ values.lifecycle }}
   {%- else %}
   lifecycle: production
   {%- endif %}
-  owner: {{ values.owner }}
+  owner: ${{ values.owner }}
   {%- if values.dependsOn %}
   dependsOn:
-    - {{ values.dependsOn }}
+    - ${{ values.dependsOn }}
   {%- endif %}
   {%- if values.partOf %}
   partOf:
-    - {{ values.partOf }}
+    - ${{ values.partOf }}
   {%- endif %}
