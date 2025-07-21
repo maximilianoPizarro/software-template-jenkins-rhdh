@@ -60,6 +60,8 @@ plugins:
   - package: oci://quay.io/maximilianopizarro/scaffolder-backend-module-jenkins:v0.1!backstage-community-plugin-scaffolder-backend-module-jenkins
     disabled: false
   - disabled: false
+    package: ./dynamic-plugins/dist/backstage-community-plugin-jenkins-backend-dynamic
+  - disabled: false
     package: ./dynamic-plugins/dist/backstage-community-plugin-jenkins
     pluginConfig:
       dynamicPlugins:
