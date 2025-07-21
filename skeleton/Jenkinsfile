@@ -3,12 +3,16 @@
 // y que la CLI de OpenShift (oc) está disponible en el agente de Jenkins.
 
 pipeline {
-    agent any // Define que el pipeline puede ejecutarse en cualquier agente disponible
-
+    agent {
+        docker {
+            image 'mcr.microsoft.com/dotnet/sdk:latest' // Or a specific version like 'mcr.microsoft.com/dotnet/sdk:8.0'
+            args '-u root' // Sometimes needed for permissions within the container
+        }
+    }
     // Parámetros configurables para el pipeline
     parameters {
-        string(name: 'OPENSHIFT_PROJECT', defaultValue: 'my-dotnet-app-dev', description: 'Nombre del proyecto de OpenShift donde se desplegará la aplicación.')
-        string(name: 'APP_NAME', defaultValue: 'dotnet-app', description: 'Nombre de la aplicación y del ImageStream/DeploymentConfig.')
+        string(name: 'OPENSHIFT_PROJECT', defaultValue: '${{ values.repoName }}', description: 'Nombre del proyecto de OpenShift donde se desplegará la aplicación.')
+        string(name: 'APP_NAME', defaultValue: '${{ values.repoName }}', description: 'Nombre de la aplicación y del ImageStream/DeploymentConfig.')
         string(name: 'DOCKERFILE_PATH', defaultValue: 'app/Dockerfile', description: 'Ruta al Dockerfile dentro del repositorio.')
         string(name: 'DOTNET_PROJECT_PATH', defaultValue: 'app/app.csproj', description: 'Ruta al archivo .csproj principal de la aplicación.')
     }
