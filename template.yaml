@@ -228,4 +228,4 @@ spec:
         icon: catalog
         entityRef: ${{ steps.register.output.entityRef }}
       - title: Open in Jenkins # Link directly to the newly created Jenkins job
-        url: 'https://jenkins-jenkins.apps.rosa.m5cq8-ma8k4-7s6.ak3p.p3.openshiftapps.com/job/${{ parameters.name }}' # Adjust this URL
+        url: 'https://jenkins-jenkins.apps.rosa.m5cq8-ma8k4-7s6.ak3p.p3.openshiftapps.com/job/${{ parameters.projectName }}' # Adjust this URL

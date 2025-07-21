@@ -1,70 +1,71 @@
-// Jenkinsfile para construir y desplegar una aplicación .NET en OpenShift
-// Este pipeline asume que Jenkins está configurado con acceso a un cluster OpenShift
-// y que la CLI de OpenShift (oc) está disponible en el agente de Jenkins.
+// Jenkinsfile para construir y desplegar una aplicación .NET en OpenShift usando Source-to-Image (S2I)
+// Este pipeline ahora se ejecutará en un Pod de Kubernetes provisionado dinámicamente.
 
 pipeline {
     agent {
-        docker {
-            image 'mcr.microsoft.com/dotnet/sdk:latest' // Or a specific version like 'mcr.microsoft.com/dotnet/sdk:8.0'
-            args '-u root' // Sometimes needed for permissions within the container
+        kubernetes {
+            // Cloud (optional): If you have multiple Kubernetes clouds configured in Jenkins,
+            // specify the name here, e.g., cloud 'openshift'
+            // namespace (optional): The Kubernetes namespace where the Pod will be created.
+            // Defaults to the namespace where the Jenkins agent itself is running,
+            // or the one configured in the Jenkins Kubernetes plugin.
+            // namespace 'your-build-namespace'
+
+            // Define the container template for the Pod
+            // We need a base image that has 'oc' and 'git' installed.
+            // The dotnet build will be handled by OpenShift S2I, so we don't need dotnet SDK here.
+            containerTemplate {
+                name 'build'
+                image 'openshift/origin-cli:latest' // Or your custom image with 'oc' and 'git'
+                command 'cat'
+                ttyEnabled true
+                # cpu '500m' // Optional: Request CPU
+                # memory '1Gi' // Optional: Request Memory
+            }
+            // Optional: If you need to mount a volume, for example, for shared cache or kubeconfig
+            # yaml """
+            #   apiVersion: v1
+            #   kind: Pod
+            #   spec:
+            #     containers:
+            #     - name: build
+            #       volumeMounts:
+            #       - mountPath: /var/run/docker.sock # Example for Docker-in-Docker if needed (not for S2I)
+            #         name: docker-sock
+            #     volumes:
+            #     - name: docker-sock
+            #       hostPath:
+            #         path: /var/run/docker.sock
+            # """
         }
     }
+
     // Parámetros configurables para el pipeline
     parameters {
         string(name: 'OPENSHIFT_PROJECT', defaultValue: '${{ values.repoName }}', description: 'Nombre del proyecto de OpenShift donde se desplegará la aplicación.')
         string(name: 'APP_NAME', defaultValue: '${{ values.repoName }}', description: 'Nombre de la aplicación y del ImageStream/DeploymentConfig.')
-        string(name: 'DOCKERFILE_PATH', defaultValue: 'app/Dockerfile', description: 'Ruta al Dockerfile dentro del repositorio.')
-        string(name: 'DOTNET_PROJECT_PATH', defaultValue: 'app/app.csproj', description: 'Ruta al archivo .csproj principal de la aplicación.')
+        string(name: 'GIT_REPO_URL', defaultValue: 'https://${{ values.sourceControl }}/${{ values.orgName }}/${{ values.repoName }}', description: 'URL del repositorio Git de la aplicación.')
+        string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Rama de Git a construir.')
     }
 
     stages {
-        stage('Checkout SCM') {
-            steps {
-                // Clona el repositorio de Git.
-                // Asegúrate de que las credenciales de Git estén configuradas en Jenkins si el repositorio es privado.
-                git branch: 'main', url: 'https://${{ values.sourceControl }}/${{ values.orgName }}/${{ values.repoName }}'
-            }
-        }
-
-        stage('Build .NET Application') {
-            steps {
-                script {
-                    // Navega al directorio de la aplicación
-                    dir('skeleton/app') {
-                        // Restaura las dependencias de .NET
-                        sh 'dotnet restore'
-                        // Publica la aplicación para producción.
-                        // --no-restore: No restaura los paquetes (ya se hizo).
-                        // -c Release: Construye en modo Release.
-                        // -o ./publish: Publica los archivos en el directorio 'publish'.
-                        sh 'dotnet publish --no-restore -c Release -o ./publish'
-                    }
-                }
-            }
-        }
-
         stage('Login to OpenShift') {
             steps {
                 script {
-                    // Asegúrate de que el agente de Jenkins tenga la CLI de OpenShift (oc) instalada y configurada.
-                    // Se asume que ya hay un token de OpenShift o que el agente puede autenticarse.
-                    // Para autenticación con token: oc login --token=<your_token> --server=<your_openshift_api_url>
-                    // Para autenticación con kubeconfig: oc login --kubeconfig=<path_to_kubeconfig>
-                    // Para este ejemplo, asumimos que el login ya está manejado por el entorno de Jenkins o un plugin.
-                    // Si necesitas un login explícito, descomenta y configura la siguiente línea:
-                    // sh "oc login --token=${OPENSHIFT_TOKEN} --server=${OPENSHIFT_API_URL}"
+                    // When running in a Kubernetes Pod, the 'oc' CLI often needs to authenticate.
+                    // If Jenkins itself is running inside OpenShift and has a ServiceAccount
+                    // with appropriate permissions, 'oc login' might not be strictly necessary,
+                    // or it might auto-authenticate.
+                    // However, it's good practice to ensure the project is set.
                     sh "oc project ${OPENSHIFT_PROJECT}"
                     echo "Logged into OpenShift project: ${OPENSHIFT_PROJECT}"
                 }
             }
         }
 
-        stage('Apply OpenShift Resources') {
+        stage('Apply OpenShift S2I Resources') {
             steps {
                 script {
-                    // Aplica los recursos de OpenShift (ImageStream, BuildConfig, Service, DeploymentConfig, Route).
-                    // Esto creará o actualizará los recursos necesarios en OpenShift.
-                    // Los archivos YAML se deben colocar en el mismo directorio que el Jenkinsfile o en una ruta accesible.
                     sh "oc apply -f openshift/image-stream.yaml -n ${OPENSHIFT_PROJECT}"
                     sh "oc apply -f openshift/build-config.yaml -n ${OPENSHIFT_PROJECT}"
                     sh "oc apply -f openshift/service.yaml -n ${OPENSHIFT_PROJECT}"
@@ -75,14 +76,13 @@ pipeline {
             }
         }
 
-        stage('Start OpenShift Build') {
+        stage('Start S2I Build') {
             steps {
                 script {
-                    // Inicia un nuevo build en OpenShift usando el BuildConfig creado.
-                    // La fuente para el build será el directorio 'skeleton/app/publish' que contiene la aplicación publicada.
-                    // Esto empujará el contenido de 'publish' al contexto de build de OpenShift.
-                    sh "oc start-build ${APP_NAME} --from-dir=skeleton/app/publish --follow -n ${OPENSHIFT_PROJECT}"
-                    echo "OpenShift build started and completed for ${APP_NAME}."
+                    // OpenShift will clone the Git repo directly from the BuildConfig.
+                    // The build pod will be managed by OpenShift itself, not this Jenkins agent pod.
+                    sh "oc start-build ${APP_NAME} --from-repo=${GIT_REPO_URL} --follow -n ${OPENSHIFT_PROJECT} --wait"
+                    echo "OpenShift S2I build started and completed for ${APP_NAME}."
                 }
             }
         }
@@ -90,12 +90,9 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 script {
-                    // Opcional: Espera a que el DeploymentConfig se despliegue completamente.
-                    // Esto asegura que la nueva versión de la aplicación esté disponible.
                     sh "oc rollout status dc/${APP_NAME} -n ${OPENSHIFT_PROJECT}"
                     echo "Deployment for ${APP_NAME} is complete."
 
-                    // Opcional: Obtener la URL de la ruta (Route) para acceder a la aplicación.
                     def routeUrl = sh(script: "oc get route ${APP_NAME} -o jsonpath='{.spec.host}' -n ${OPENSHIFT_PROJECT}", returnStdout: true).trim()
                     echo "Application URL: http://${routeUrl}"
                 }
@@ -105,12 +102,10 @@ pipeline {
 
     post {
         always {
-            // Pasos que se ejecutan siempre al finalizar el pipeline (éxito o fallo).
-            cleanWs() // Limpia el espacio de trabajo del agente de Jenkins.
+            cleanWs() // Cleans the Jenkins workspace (the ephemeral Pod)
         }
         failure {
             echo "Pipeline failed. Check logs for details."
-            // Aquí puedes añadir notificaciones (email, Slack, etc.)
         }
         success {
             echo "Pipeline completed successfully!"
