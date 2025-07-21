@@ -201,6 +201,7 @@ spec:
           description: ${{ parameters.description }}
           port: ${{ parameters.port }}
           applicationType: website
+          jenkinsInstance: default-jenkins
           sourceControl: github.com
 
     - id: publish
