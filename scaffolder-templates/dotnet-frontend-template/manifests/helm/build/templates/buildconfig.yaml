@@ -1,0 +1,19 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: {{ .Values.app.name }}-dev
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: {{ include "jenkins-template.image" . }}
+  source:
+    type: Git
+    git:
+      uri: 'https://{{ include "jenkins-template.host" . }}/{{ include "jenkins-template.organization" . }}/{{ include "jenkins-template.name" . }}' 
+      ref: master 
+    contextDir: / 
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile 

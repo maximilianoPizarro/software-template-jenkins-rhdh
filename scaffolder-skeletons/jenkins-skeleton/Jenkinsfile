@@ -1,0 +1,71 @@
+// Jenkinsfile para construir y desplegar una aplicación .NET en OpenShift usando Source-to-Image (S2I)
+// Este pipeline ahora se ejecutará en un Pod de Kubernetes provisionado dinámicamente.
+
+pipeline {
+    agent {
+        kubernetes {
+            // Cloud (optional): If you have multiple Kubernetes clouds configured in Jenkins,
+            // specify the name here, e.g., cloud 'openshift'
+            // namespace (optional): The Kubernetes namespace where the Pod will be created.
+            // Defaults to the namespace where the Jenkins agent itself is running,
+            // or the one configured in the Jenkins Kubernetes plugin.
+            // namespace 'your-build-namespace'
+
+            // Define the container template for the Pod
+            // We need a base image that has 'oc' and 'git' installed.
+            // The dotnet build will be handled by OpenShift S2I, so we don't need dotnet SDK here.
+            containerTemplate {
+                name 'build'
+                image 'openshift/origin-cli:latest' // Or your custom image with 'oc' and 'git'
+                command 'cat'
+                ttyEnabled true
+                cpu '500m' // Optional: Request CPU
+                memory '1Gi' // Optional: Request Memory
+            }
+        }
+    }
+
+    // Parámetros configurables para el pipeline
+    parameters {
+        string(name: 'OPENSHIFT_PROJECT', defaultValue: '${{ values.repoName }}-dev-build', description: 'Nombre del proyecto de OpenShift donde se desplegará la aplicación.')
+        string(name: 'APP_NAME', defaultValue: '${{ values.repoName }}', description: 'Nombre de la aplicación y del ImageStream/DeploymentConfig.')
+        string(name: 'GIT_REPO_URL', defaultValue: 'https://${{ values.host }}/${{ values.githubOrg }}/${{ values.repoName }}', description: 'URL del repositorio Git de la aplicación.')
+        string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Rama de Git a construir.')
+    }
+
+    stages {
+
+        stage('Start S2I Build') {
+            steps {
+                script {
+                    // OpenShift will clone the Git repo directly from the BuildConfig.
+                    // The build pod will be managed by OpenShift itself, not this Jenkins agent pod.
+                    sh "oc start-build ${APP_NAME}-app-build --from-repo=${GIT_REPO_URL} --follow -n ${OPENSHIFT_PROJECT} --wait"
+                    echo "OpenShift S2I build started and completed for ${APP_NAME}."
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+
+                    def routeUrl = sh(script: "oc get route ${APP_NAME} -o jsonpath='{.spec.host}' -n ${OPENSHIFT_PROJECT}", returnStdout: true).trim()
+                    echo "Application URL: http://${routeUrl}"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs() // Cleans the Jenkins workspace (the ephemeral Pod)
+        }
+        failure {
+            echo "Pipeline failed. Check logs for details."
+        }
+        success {
+            echo "Pipeline completed successfully!"
+        }
+    }
+}

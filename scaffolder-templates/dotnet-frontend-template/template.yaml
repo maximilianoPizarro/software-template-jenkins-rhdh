@@ -1,0 +1,381 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: dotnet-frontend-template
+  title: Create a .NET Frontend application with a CI pipeline
+  description: Create a starter .NET frontend application with a CI pipeline
+  tags:
+    - recommended
+    - dotnet
+spec:
+  owner: rhdh
+  type: website
+  parameters:
+    - title: Provide information about the new component
+      required:
+        - component_id
+        - githubOrg
+        - repoName
+        - owner
+        - system
+        - port
+      properties:
+        component_id:
+          title: Name
+          type: string
+          description: Unique name of the component
+          default: dotnet-frontend
+          ui:field: EntityNamePicker
+          maxLength: 23
+        githubOrg:
+          title: GitHub Organization
+          type: string
+          default: development
+        repoName:
+          title: Repository Name
+          type: string
+          default: dotnet-frontend
+        description:
+          title: Description
+          type: string
+          description: Help others understand what this component is for
+          default: dotnet-frontend
+        owner:
+          title: Owner
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind:
+                - Group
+                - User
+        system:
+          title: System
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind:
+                - System
+        port:
+          title: Port
+          type: number
+          default: 5000
+          description: Override the port exposed for the application
+        jenkinsBaseUrl:
+          title: Jenkins Server
+          type: string
+          description: The Jenkins server to use
+          default: http://jenkins-jenkins.apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+    - title: Provide information about the CI method
+      required:
+        - ci
+      properties:
+        ci:
+          title: Select a CI method
+          type: string
+          description: This action will create a CI pipeline for your application based on chosen method
+          default: ../../scaffolder-skeletons/github-actions-skeleton/
+          enum:
+            - ../../scaffolder-skeletons/jenkins-skeleton/
+            - ../../scaffolder-skeletons/github-actions-skeleton/
+            - ../../scaffolder-skeletons/tekton-skeleton/
+          enumNames:
+            - Jenkins
+            - GitHub Action
+            - Tekton
+    - title: Provide Image Registry Information
+      required:
+        - image_registry
+      properties:
+        image_registry:
+          title: Image Registry
+          type: string
+          enum:
+            - Openshift
+            - Quay
+      dependencies:
+        image_registry:
+          oneOf:
+            - properties:
+                image_registry:
+                  enum:
+                    - Openshift
+                image_host:
+                  title: Image Host
+                  type: string
+                  description: Host for storing image
+                  default: image-registry.openshift-image-registry.svc:5000
+                image_tag:
+                  title: Image Tag
+                  default: latest
+                  type: string
+                  description: Build Image tag
+            - properties:
+                image_registry:
+                  enum:
+                    - Quay
+                image_host:
+                  title: Image Host
+                  type: string
+                  description: Host for storing image
+                  default: quay-6xdx6.apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+                image_organization:
+                  title: Organization
+                  type: string
+                  description: Name of the Quay Organization
+                  default: quayadmin
+                image_tag:
+                  title: Image Tag
+                  default: latest
+                  type: string
+                  description: Build Image tag
+    - title: Application repository Information
+      required:
+        - repo
+      properties:
+        repo:
+          title: Repository Location
+          type: object
+          properties:
+            host:
+              title: Repo Host
+              type: string
+              description: Your SCM host
+              default: gitlab-gitlab.apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+              enum:
+                - gitlab-gitlab.apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+            owner:
+              title: Repo Owner
+              type: string
+              description: Your SCM host organization/group
+              default: development
+              enum:
+                - development
+  steps:
+    - id: sourceCodeTemplate
+      name: Generating the Source Code Component
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          githubOrg: ${{ parameters.githubOrg }}
+          repoName: ${{ parameters.repoName }}
+          host: ${{ parameters.repo.host }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          applicationType: website
+          description: ${{ parameters.description }}
+          namespace: ${{ parameters.namespace }}
+          imageUrl: ${{ parameters.imageUrl }}
+          imageBuilder: s2i-dotnetcore
+          imageRepository: ${{ parameters.imageRepository }}
+          port: ${{ parameters.port }}
+          ci: ${{ parameters.ci }}
+          cluster: .apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+          destination: ${{ parameters.repo.owner }}/${{ parameters.component_id }}
+          quay_destination: ${{ parameters.image_organization}}/${{ parameters.component_id }}
+
+    - id: ciTemplate
+      name: Generating the CI Component
+      action: fetch:template
+      input:
+        url: ${{ parameters.ci }}
+        copyWithoutTemplating:
+          - .github/workflows/
+        values:
+          githubOrg: ${{ parameters.githubOrg }}
+          repoName: ${{ parameters.repoName }}
+          host: ${{ parameters.repo.host }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          applicationType: website
+          description: ${{ parameters.description }}
+          namespace: ${{ parameters.namespace }}
+          imageUrl: ${{ parameters.imageUrl }}
+          imageBuilder: s2i-dotnetcore
+          imageRepository: ${{ parameters.imageRepository }}
+          port: ${{ parameters.port }}
+          ci: ${{ parameters.ci }}
+          
+    - id: catalogTemplate
+      name: Generating the Catalog Info Component
+      action: fetch:template
+      input:
+        url: ../../scaffolder-skeletons/catalog-info-skeleton/
+        values:
+          githubOrg: ${{ parameters.githubOrg }}
+          repoName: ${{ parameters.repoName }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          applicationType: website
+          description: ${{ parameters.description }}
+          host: ${{ parameters.repo.host }}
+          destination: ${{ parameters.githubOrg }}/${{ parameters.repoName }}
+          component_id: ${{ parameters.component_id }}
+          namespace: ${{ parameters.namespace }}
+          imageUrl: ${{ parameters.imageUrl }}
+          imageBuilder: s2i-dotnetcore
+          imageRepository: ${{ parameters.imageRepository }}
+          port: ${{ parameters.port }}
+          jenkinsInstance: default-jenkins
+          ci: ${{ parameters.ci }}
+
+    - id: publish
+      name: Publish
+      action: publish:gitlab
+      input:
+        repoUrl: "${{ parameters.repo.host }}?owner=${{ parameters.githubOrg }}&repo=${{ parameters.repoName }}"
+        repoVisibility: public
+
+    - id: register
+      name: Register
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: "/catalog-info.yaml"
+
+    - id: template-gitops-deployment
+      name: Generating Deployment Resources
+      action: fetch:template
+      input:
+        url: ./manifests
+        copyWithoutTemplating: []
+        values:
+          component_id: ${{ parameters.component_id }}
+          description: ${{ parameters.description }}
+          destination: ${{ parameters.repo.host }}/${{ parameters.repo.owner }}/${{parameters.component_id}}-gitops.git
+          source_repository: ${{ parameters.repo.host }}/${{ parameters.repo.owner }}/${{parameters.component_id}}.git
+          repository_name: ${{parameters.component_id}}
+          git_owner: ${{ parameters.repo.owner }}
+          cluster: .apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+          namespace: ${{ parameters.component_id }}-dev
+          image_registry: ${{ parameters.image_registry }}
+          image_host: ${{ parameters.image_host }}
+          image_organization: ${{ parameters.image_organization }}
+          image_name: ${{ parameters.component_id }}
+          image_tag: ${{ parameters.image_tag }}
+          port: 5000
+          repository_host: ${{ parameters.repo.host }}
+          deployment_name: dotnet-template
+          user: ${{ user.entity.metadata.name }}
+        targetPath: ./tenant-gitops
+
+    - id: publish-gitops
+      name: Publishing to Resource Repository
+      action: publish:gitlab
+      input:
+        repoUrl: "${{ parameters.repo.host }}?owner=${{ parameters.repo.owner }}&repo=${{parameters.component_id}}-gitops"
+        title: gitops resources for ${{ parameters.component_id }}
+        description: gitops resources for ${{ parameters.component_id }}
+        sourcePath: ./tenant-gitops
+        repoVisibility: public
+
+    - id: create-argocd-resources
+      name: Create ArgoCD Resources
+      action: argocd:create-resources
+      input:
+        appName: ${{ parameters.component_id }}-bootstrap
+        argoInstance: main
+        namespace: janus-argocd
+        repoUrl: https://${{ parameters.repo.host }}/${{ parameters.repo.owner }}/${{ parameters.component_id }}-gitops.git
+        path: 'argocd/'
+
+    - id: create-jenkins-job 
+      name: Create Jenkins CI Job
+      action: jenkins:job:create
+      input:
+        url: ../../scaffolder-skeletons/jenkins-skeleton/
+        values:
+          repository_host: ${{ parameters.repo.host }}
+          githubOrg: ${{ parameters.githubOrg }}
+          repoName: ${{ parameters.repoName }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          applicationType: website
+          description: ${{ parameters.description }}
+          namespace: ${{ parameters.namespace }}
+          imageUrl: ${{ parameters.imageUrl }}
+          imageBuilder: s2i-dotnetcore
+          imageRepository: ${{ parameters.imageRepository }}
+          port: ${{ parameters.port }}
+          ci: ${{ parameters.ci }}
+        jobName: '${{ parameters.repoName }}'
+        folderName: '${{ parameters.repoName }}'        
+        jenkinsfilePath: 'Jenkinsfile'
+        jobXml: |          
+          <?xml version='1.1' encoding='UTF-8'?>
+          <flow-definition plugin="workflow-job@1385.vb_58b_86ea_349d">
+            <actions/>
+            <description>Pipeline para construir y desplegar una aplicación .NET en OpenShift utilizando un Jenkinsfile.</description>
+            <keepDependencies>false</keepDependencies>
+            <properties>
+              <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+                <triggers>
+                  <hudson.triggers.SCMTrigger>
+                    <spec>H/5 * * * *</spec> <!-- Cada 5 minutos, o ajusta según necesites -->
+                    <ignorePostCommitHooks>false</ignorePostCommitHooks>
+                  </hudson.triggers.SCMTrigger>
+                </triggers>
+              </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+              <hudson.model.ParametersDefinitionProperty>
+                <parameterDefinitions>
+                  <hudson.model.StringParameterDefinition>
+                    <name>OPENSHIFT_PROJECT</name>
+                    <defaultValue>${{ parameters.repoName }}</defaultValue>
+                    <trim>false</trim>
+                  </hudson.model.StringParameterDefinition>
+                  <hudson.model.StringParameterDefinition>
+                    <name>APP_NAME</name>
+                    <defaultValue>${{ parameters.repoName }}</defaultValue>
+                    <trim>false</trim>
+                  </hudson.model.StringParameterDefinition>
+                  <hudson.model.StringParameterDefinition>
+                    <name>DOCKERFILE_PATH</name>
+                    <defaultValue>app/Dockerfile</defaultValue>
+                    <trim>false</trim>
+                  </hudson.model.StringParameterDefinition>
+                  <hudson.model.StringParameterDefinition>
+                    <name>DOTNET_PROJECT_PATH</name>
+                    <defaultValue>app/app.csproj</defaultValue>
+                    <trim>false</trim>
+                  </hudson.model.StringParameterDefinition>
+                </parameterDefinitions>
+              </hudson.model.ParametersDefinitionProperty>
+            </properties>
+            <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@3894.v02b_74ac9004d">
+              <scm class="hudson.plugins.git.GitSCM" plugin="git@5.2.1">
+                <branches>
+                  <hudson.plugins.git.BranchSpec>
+                    <name>*/master</name> <!-- La rama principal de tu repositorio -->
+                  </hudson.plugins.git.BranchSpec>
+                </branches>
+                <userRemoteConfigs>
+                  <hudson.plugins.git.UserRemoteConfig>
+                    <url>https://${{ parameters.repo.host }}/${{ parameters.githubOrg }}/${{ parameters.repoName }}</url>
+                    <!-- <credentialsId>github-pat-for-ci</credentialsId> -->
+                  </hudson.plugins.git.UserRemoteConfig>
+                </userRemoteConfigs>
+                <browser class="hudson.plugins.git.browser.GithubWeb">
+                  <url>https://${{ parameters.repo.host }}${{ values.sourceControl }}/${{ parameters.githubOrg }}/${{ parameters.repoName }}</url>
+                </browser>
+                <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+                <submoduleCfg class="empty-list"/>
+                <extensions/>
+              </scm>
+              <scriptPath>Jenkinsfile</scriptPath> <!-- La ruta a tu Jenkinsfile dentro del repositorio -->
+              <lightweight>true</lightweight>
+            </definition>
+            <triggers/>
+            <disabled>false</disabled>
+          </flow-definition>
+
+  output:
+    links:
+      - title: Open the Source Code Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open the Catalog Info Component
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}
+      - title: Open in Jenkins 
+        url: '${{ parameters.jenkinsBaseUrl }}/job/${{ parameters.repoName }}'

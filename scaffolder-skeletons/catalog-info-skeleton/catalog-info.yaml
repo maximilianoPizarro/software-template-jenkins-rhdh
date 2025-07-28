@@ -1,0 +1,46 @@
+apiVersion: backstage.io/v1alpha1
+{%- if values.entityKind %}
+kind: ${{ values.entityKind }}
+{%- else %}
+kind: Component
+{%- endif %}
+metadata:
+  name: ${{ values.repoName }}
+  {%- if values.description %}
+  description: ${{ values.description }}
+  {%- endif %}
+  annotations:
+    argocd/app-selector: rht-gitops.com/janus-argocd=${{values.component_id}}-bootstrap
+    {%- if values.ci == "../../scaffolder-skeletons/tekton-skeleton/" %}
+    tektonci/build-namespace: ${{ values.namespace }}
+    {%- endif %}
+    {%- if values.ci == "../../scaffolder-skeletons/jenkins-skeleton/" %}
+    jenkins.io/job-full-name: ${{ values.jenkinsInstance }}:${{ values.repoName }}
+    {%- endif %}
+    backstage.io/kubernetes-id: ${{ values.repoName }}
+    backstage.io/techdocs-ref: url:https://${{values.host}}/${{values.destination}}
+    backstage.io/source-location: url:https://${{values.host}}/${{values.destination}}
+    gitlab.com/project-slug: ${{ values.githubOrg }}/${{ values.repoName }}
+  tags:
+    - dotnet
+    - jenkins
+  links:
+    - url: https://devspaces${{values.cluster}}/#https://${{values.host}}/${{values.destination}}
+      title: OpenShift Dev Spaces (VS Code)
+      icon: web
+    - url: https://devspaces${{values.cluster}}/#https://${{values.host}}/${{values.destination}}?che-editor=che-incubator/che-idea/latest
+      title: OpenShift Dev Spaces (JetBrains IntelliJ)
+      icon: web
+spec:
+  type: ${{ values.applicationType }}
+  system: ${{ values.system }}
+  lifecycle: production
+  owner: ${{ values.owner }}
+  {%- if values.dependsOn %}
+  dependsOn:
+    - ${{ values.dependsOn }}
+  {%- endif %}
+  {%- if values.partOf %}
+  partOf:
+    - ${{ values.partOf }}
+  {%- endif %}
