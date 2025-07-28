@@ -194,15 +194,6 @@ spec:
         # Jenkins instance URL (if you have multiple and the action supports it)
         # jenkinsInstance: 'your-jenkins-instance-id'
 
-    - id: createOpenshiftProject
-      name: Create OpenShift Project
-      action: kubernetes:create-object # This action needs to be registered in your Backstage backend
-      input:
-        apiVersion: v1
-        kind: Namespace # Or 'Project' for OpenShift specific API, but Namespace is more standard
-        metadata:
-          name: ${{ parameters.projectName }} 
-
     - id: catalogTemplate
       name: Generating the Catalog Info Component
       action: fetch:template
