@@ -2,7 +2,7 @@
 
 [![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://ssh.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/maximilianoPizarro/software-template-jenkins-rhdh&cloudshell_tutorial=README.md&cloudshell_workspace=/)
 
-![Jenkins](https://giphy.com/gifs/i7owg1TK2tP1JXbWsV)
+![Jenkins](https://media0.giphy.com/media/v1.Y2lkPTZjMDliOTUyenlhOGtyaTI3cGJubXE4dTNkbjZzM25uY3Y0cDZrZmlpNXlxeno2eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/i7owg1TK2tP1JXbWsV/giphy.gif)
 
 
 This repository contains a Backstage software template designed for creating new services that integrate with Jenkins for CI/CD. It's specifically tailored for use with Red Hat Developer Hub.
