@@ -1,57 +1,106 @@
-// Jenkinsfile para construir y desplegar una aplicación .NET en OpenShift usando Source-to-Image (S2I)
-// Este pipeline ahora se ejecutará en un Pod de Kubernetes provisionado dinámicamente.
+// Jenkinsfile para construir y publicar una aplicación de contenedor en Quay.io usando Podman
+// Este pipeline se ejecutará en un Pod de Kubernetes provisionado dinámicamente.
 
 pipeline {
     agent {
         kubernetes {
-            // Cloud (optional): If you have multiple Kubernetes clouds configured in Jenkins,
-            // specify the name here, e.g., cloud 'openshift'
-            // namespace (optional): The Kubernetes namespace where the Pod will be created.
-            // Defaults to the namespace where the Jenkins agent itself is running,
-            // or the one configured in the Jenkins Kubernetes plugin.
-            // namespace 'your-build-namespace'
-
-            // Define the container template for the Pod
-            // We need a base image that has 'oc' and 'git' installed.
-            // The dotnet build will be handled by OpenShift S2I, so we don't need dotnet SDK here.
-            containerTemplate {
-                name 'build'
-                image 'openshift/origin-cli:latest' // Or your custom image with 'oc' and 'git'
-                command 'cat'
-                ttyEnabled true
-                cpu '500m' // Optional: Request CPU
-                memory '1Gi' // Optional: Request Memory
-            }
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jenkins-agent-${UUID.randomUUID().toString()} # Nombre único para el pod
+  labels:
+    jenkins: agent
+    # Asegúrate de que tu Jenkins pueda encontrar este agente por un label si lo necesita
+spec:
+  containers:
+  - name: build # El nombre del contenedor principal que usará Jenkins
+    image: registry.redhat.io/ubi9/podman:latest # Tu imagen de Podman
+    command: ['cat']
+    tty: true
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+    env:
+    - name: HOME # Define HOME para que Podman tenga un lugar donde almacenar sus configs
+      value: /home/jenkins
+    - name: XDG_RUNTIME_DIR # También podemos definirlo aquí como respaldo o si Podman lo prefiere
+      value: /tmp/run
+    - name: PATH # podman
+      value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    volumeMounts: # Monta el volumen temporal en /home/jenkins
+    - name: jenkins-home
+      mountPath: /home/jenkins
+    - name: tmp-run-dir # Monta el volumen temporal en /tmp/run
+      mountPath: /tmp/run
+  volumes: # Define los volúmenes a nivel del Pod
+  - name: jenkins-home
+    emptyDir: {} # Un volumen temporal que se crea con el Pod
+  - name: tmp-run-dir
+    emptyDir: {} # Otro volumen temporal para XDG_RUNTIME_DIR si es necesario
+"""
         }
     }
 
     // Parámetros configurables para el pipeline
     parameters {
-        string(name: 'OPENSHIFT_PROJECT', defaultValue: '${{ values.repoName }}-dev-build', description: 'Nombre del proyecto de OpenShift donde se desplegará la aplicación.')
-        string(name: 'APP_NAME', defaultValue: '${{ values.repoName }}', description: 'Nombre de la aplicación y del ImageStream/DeploymentConfig.')
-        string(name: 'GIT_REPO_URL', defaultValue: 'https://${{ values.host }}/${{ values.githubOrg }}/${{ values.repoName }}', description: 'URL del repositorio Git de la aplicación.')
-        string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Rama de Git a construir.')
+        string(name: 'GIT_REPO_URL', defaultValue: 'https://${{ values.host }}/${{ values.githubOrg }}/${{ values.repoName }}.git', description: 'URL del repositorio Git de la aplicación.')
+        string(name: 'GIT_BRANCH', defaultValue: 'master', description: 'Rama de Git a construir.')
+        string(name: 'CONTAINERFILE_PATH', defaultValue: '.', description: 'Ruta al Containerfile/Dockerfile dentro del repositorio (ej. "app" o "." para la raíz).')
+        string(name: 'QUAY_REPO', defaultValue: '${{ values.quay_destination}}', description: 'Nombre completo del repositorio en Quay.io (ej. quay.io/mi-org/mi-app).')
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Etiqueta de la imagen de contenedor a publicar (ej. latest, o un hash de commit).')
+        password(name: 'QUAY_CREDENTIALS_ID_PARAM', defaultValue: 'QUAY_CREDENTIALS_ID', description: 'ID de las credenciales de Quay.io (definidas en Jenkins).')
+
     }
 
     stages {
-
-        stage('Start S2I Build') {
+        stage('Checkout Code') {
             steps {
                 script {
-                    // OpenShift will clone the Git repo directly from the BuildConfig.
-                    // The build pod will be managed by OpenShift itself, not this Jenkins agent pod.
-                    sh "oc start-build ${APP_NAME}-app-build --from-repo=${GIT_REPO_URL} --follow -n ${OPENSHIFT_PROJECT} --wait"
-                    echo "OpenShift S2I build started and completed for ${APP_NAME}."
+                    echo "Clonando el repositorio ${params.GIT_REPO_URL} en la rama ${params.GIT_BRANCH}..."
+                    git branch: params.GIT_BRANCH, url: params.GIT_REPO_URL
                 }
             }
         }
 
-        stage('Verify Deployment') {
+        stage('Build Container Image') {
             steps {
                 script {
+                    echo "Construyendo la imagen ${params.QUAY_REPO}:${params.IMAGE_TAG} desde ${params.CONTAINERFILE_PATH}..."
+                    // **CLAVE:** Crea el directorio y establece XDG_RUNTIME_DIR justo antes de podman build.
+                    sh """
+                        mkdir -p /tmp/run # Asegura que el directorio exista y sea escribible.
+                        export XDG_RUNTIME_DIR=/tmp/run # Establece la variable para esta sesión del shell.
+                        podman build -f ${params.CONTAINERFILE_PATH}/Dockerfile -t ${params.QUAY_REPO}:${params.IMAGE_TAG} ${params.CONTAINERFILE_PATH}
+                    """
+                    echo "Imagen de contenedor ${params.QUAY_REPO}:${params.IMAGE_TAG} construida exitosamente con Podman."
+                }
+            }
+        }
 
-                    def routeUrl = sh(script: "oc get route ${APP_NAME} -o jsonpath='{.spec.host}' -n ${OPENSHIFT_PROJECT}", returnStdout: true).trim()
-                    echo "Application URL: http://${routeUrl}"
+        stage('Login to Quay.io') {
+            steps {
+                script {
+                    echo "Iniciando sesión en Quay.io..."
+                    // **CORRECCIÓN CLAVE**: El bloque `withCredentials` DEBE estar activo para manejar las credenciales de forma segura.
+                    // Las variables `QUAY_USERNAME` y `QUAY_PASSWORD` serán inyectadas por este bloque.
+                    withCredentials([usernamePassword(credentialsId: params.QUAY_CREDENTIALS_ID_PARAM, passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+                        // Usamos 'podman login' para autenticarnos.
+                        sh "echo \"$QUAY_PASSWORD\" | podman login -u \"$QUAY_USERNAME\" --password-stdin quay.io"
+                    }
+                    echo "Login a Quay.io exitoso con Podman."
+                }
+            }
+        }
+
+        stage('Push Container Image to Quay.io') {
+            steps {
+                script {
+                    echo "Publicando la imagen ${params.QUAY_REPO}:${params.IMAGE_TAG} en Quay.io..."
+                    // Usamos 'podman push' para subir la imagen.
+                    sh "podman push ${params.QUAY_REPO}:${params.IMAGE_TAG}"
+                    echo "Imagen ${params.QUAY_REPO}:${params.IMAGE_TAG} publicada en Quay.io exitosamente con Podman."
                 }
             }
         }
@@ -59,13 +108,13 @@ pipeline {
 
     post {
         always {
-            cleanWs() // Cleans the Jenkins workspace (the ephemeral Pod)
+            cleanWs() // Limpia el workspace de Jenkins (el Pod efímero)
         }
         failure {
-            echo "Pipeline failed. Check logs for details."
+            echo "El pipeline falló. Revisa los logs para más detalles."
         }
         success {
-            echo "Pipeline completed successfully!"
+            echo "El pipeline completado exitosamente y la imagen publicada en Quay.io!"
         }
-    }
+}
 }

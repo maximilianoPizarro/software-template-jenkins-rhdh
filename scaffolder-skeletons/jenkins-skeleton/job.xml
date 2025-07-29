@@ -16,12 +16,12 @@
       <parameterDefinitions>
         <hudson.model.StringParameterDefinition>
           <name>OPENSHIFT_PROJECT</name>
-          <defaultValue>${{ parameters.repoName }}</defaultValue>
+          <defaultValue>${{ values.repoName }}</defaultValue>
           <trim>false</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>APP_NAME</name>
-          <defaultValue>${{ parameters.repoName }}</defaultValue>
+          <defaultValue>${{ values.repoName }}</defaultValue>
           <trim>false</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
@@ -46,12 +46,12 @@
       </branches>
       <userRemoteConfigs>
         <hudson.plugins.git.UserRemoteConfig>
-          <url>https://${{ parameters.repo.host }}/${{ parameters.githubOrg }}/${{ parameters.repoName }}</url>
+          <url>https://${{ values.host }}/${{ values.githubOrg }}/${{ values.repoName }}</url>
           <!-- <credentialsId>github-pat-for-ci</credentialsId> -->
         </hudson.plugins.git.UserRemoteConfig>
       </userRemoteConfigs>
       <browser class="hudson.plugins.git.browser.GithubWeb">
-        <url>https://${{ parameters.repo.host }}${{ values.sourceControl }}/${{ parameters.githubOrg }}/${{ parameters.repoName }}</url>
+        <url>https://${{ values.host }}${{ values.sourceControl }}/${{ values.githubOrg }}/${{ values.repoName }}</url>
       </browser>
       <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
       <submoduleCfg class="empty-list"/>

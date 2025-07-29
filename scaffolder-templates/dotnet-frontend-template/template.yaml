@@ -10,6 +10,7 @@ metadata:
 spec:
   owner: rhdh
   type: website
+
   parameters:
     - title: Provide information about the new component
       required:
@@ -174,7 +175,7 @@ spec:
           ci: ${{ parameters.ci }}
           cluster: .apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
           destination: ${{ parameters.repo.owner }}/${{ parameters.component_id }}
-          quay_destination: ${{ parameters.image_organization}}/${{ parameters.component_id }}
+          quay_destination: ${{ parameters.image_host}}/${{ parameters.image_organization}}/${{ parameters.component_id }}
 
     - id: ciTemplate
       name: Generating the CI Component
@@ -197,6 +198,9 @@ spec:
           imageRepository: ${{ parameters.imageRepository }}
           port: ${{ parameters.port }}
           ci: ${{ parameters.ci }}
+          cluster: .apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+          destination: ${{ parameters.repo.owner }}/${{ parameters.component_id }}
+          quay_destination: ${{ parameters.image_host}}/${{ parameters.image_organization}}/${{ parameters.component_id }}
           
     - id: catalogTemplate
       name: Generating the Catalog Info Component
@@ -220,6 +224,8 @@ spec:
           port: ${{ parameters.port }}
           jenkinsInstance: default-jenkins
           ci: ${{ parameters.ci }}
+          cluster: .apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+          quay_destination: ${{ parameters.image_host}}/${{ parameters.image_organization}}/${{ parameters.component_id }}
 
     - id: publish
       name: Publish
@@ -259,6 +265,7 @@ spec:
           repository_host: ${{ parameters.repo.host }}
           deployment_name: dotnet-template
           user: ${{ user.entity.metadata.name }}
+          quay_destination: ${{ parameters.image_host}}/${{ parameters.image_organization}}/${{ parameters.component_id }}
         targetPath: ./tenant-gitops
 
     - id: publish-gitops
@@ -300,75 +307,77 @@ spec:
           imageRepository: ${{ parameters.imageRepository }}
           port: ${{ parameters.port }}
           ci: ${{ parameters.ci }}
+          quay_destination: ${{ parameters.image_host}}/${{ parameters.image_organization}}/${{ parameters.component_id }}
         jobName: '${{ parameters.repoName }}'
         folderName: '${{ parameters.repoName }}'        
         jenkinsfilePath: 'Jenkinsfile'
-        jobXml: |          
-          <?xml version='1.1' encoding='UTF-8'?>
-          <flow-definition plugin="workflow-job@1385.vb_58b_86ea_349d">
-            <actions/>
-            <description>Pipeline para construir y desplegar una aplicación .NET en OpenShift utilizando un Jenkinsfile.</description>
-            <keepDependencies>false</keepDependencies>
-            <properties>
-              <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
-                <triggers>
-                  <hudson.triggers.SCMTrigger>
-                    <spec>H/5 * * * *</spec> <!-- Cada 5 minutos, o ajusta según necesites -->
-                    <ignorePostCommitHooks>false</ignorePostCommitHooks>
-                  </hudson.triggers.SCMTrigger>
-                </triggers>
-              </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
-              <hudson.model.ParametersDefinitionProperty>
-                <parameterDefinitions>
-                  <hudson.model.StringParameterDefinition>
-                    <name>OPENSHIFT_PROJECT</name>
-                    <defaultValue>${{ parameters.repoName }}</defaultValue>
-                    <trim>false</trim>
-                  </hudson.model.StringParameterDefinition>
-                  <hudson.model.StringParameterDefinition>
-                    <name>APP_NAME</name>
-                    <defaultValue>${{ parameters.repoName }}</defaultValue>
-                    <trim>false</trim>
-                  </hudson.model.StringParameterDefinition>
-                  <hudson.model.StringParameterDefinition>
-                    <name>DOCKERFILE_PATH</name>
-                    <defaultValue>app/Dockerfile</defaultValue>
-                    <trim>false</trim>
-                  </hudson.model.StringParameterDefinition>
-                  <hudson.model.StringParameterDefinition>
-                    <name>DOTNET_PROJECT_PATH</name>
-                    <defaultValue>app/app.csproj</defaultValue>
-                    <trim>false</trim>
-                  </hudson.model.StringParameterDefinition>
-                </parameterDefinitions>
-              </hudson.model.ParametersDefinitionProperty>
-            </properties>
-            <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@3894.v02b_74ac9004d">
-              <scm class="hudson.plugins.git.GitSCM" plugin="git@5.2.1">
-                <branches>
-                  <hudson.plugins.git.BranchSpec>
-                    <name>*/master</name> <!-- La rama principal de tu repositorio -->
-                  </hudson.plugins.git.BranchSpec>
-                </branches>
-                <userRemoteConfigs>
-                  <hudson.plugins.git.UserRemoteConfig>
-                    <url>https://${{ parameters.repo.host }}/${{ parameters.githubOrg }}/${{ parameters.repoName }}</url>
-                    <!-- <credentialsId>github-pat-for-ci</credentialsId> -->
-                  </hudson.plugins.git.UserRemoteConfig>
-                </userRemoteConfigs>
-                <browser class="hudson.plugins.git.browser.GithubWeb">
-                  <url>https://${{ parameters.repo.host }}${{ values.sourceControl }}/${{ parameters.githubOrg }}/${{ parameters.repoName }}</url>
-                </browser>
-                <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
-                <submoduleCfg class="empty-list"/>
-                <extensions/>
-              </scm>
-              <scriptPath>Jenkinsfile</scriptPath> <!-- La ruta a tu Jenkinsfile dentro del repositorio -->
-              <lightweight>true</lightweight>
-            </definition>
-            <triggers/>
-            <disabled>false</disabled>
-          </flow-definition>
+        configPath: 'job.xml'
+#        jobXml: |          
+#          <?xml version='1.1' encoding='UTF-8'?>
+#          <flow-definition plugin="workflow-job@1385.vb_58b_86ea_349d">
+#            <actions/>
+#            <description>Pipeline para construir y desplegar una aplicación .NET en OpenShift utilizando un Jenkinsfile.</description>
+#            <keepDependencies>false</keepDependencies>
+#            <properties>
+#              <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+#                <triggers>
+#                  <hudson.triggers.SCMTrigger>
+#                    <spec>H/5 * * * *</spec> <!-- Cada 5 minutos, o ajusta según necesites -->
+#                    <ignorePostCommitHooks>false</ignorePostCommitHooks>
+#                  </hudson.triggers.SCMTrigger>
+#                </triggers>
+#              </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+#              <hudson.model.ParametersDefinitionProperty>
+#                <parameterDefinitions>
+#                  <hudson.model.StringParameterDefinition>
+#                    <name>OPENSHIFT_PROJECT</name>
+#                    <defaultValue>${{ parameters.repoName }}</defaultValue>
+#                    <trim>false</trim>
+#                  </hudson.model.StringParameterDefinition>
+#                  <hudson.model.StringParameterDefinition>
+#                    <name>APP_NAME</name>
+#                    <defaultValue>${{ parameters.repoName }}</defaultValue>
+#                    <trim>false</trim>
+#                  </hudson.model.StringParameterDefinition>
+#                  <hudson.model.StringParameterDefinition>
+#                    <name>DOCKERFILE_PATH</name>
+#                    <defaultValue>app/Dockerfile</defaultValue>
+#                    <trim>false</trim>
+#                  </hudson.model.StringParameterDefinition>
+#                  <hudson.model.StringParameterDefinition>
+#                    <name>DOTNET_PROJECT_PATH</name>
+#                    <defaultValue>app/app.csproj</defaultValue>
+#                    <trim>false</trim>
+#                  </hudson.model.StringParameterDefinition>
+#                </parameterDefinitions>
+#              </hudson.model.ParametersDefinitionProperty>
+#            </properties>
+#            <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@3894.v02b_74ac9004d">
+#              <scm class="hudson.plugins.git.GitSCM" plugin="git@5.2.1">
+#                <branches>
+#                  <hudson.plugins.git.BranchSpec>
+#                    <name>*/master</name> <!-- La rama principal de tu repositorio -->
+#                  </hudson.plugins.git.BranchSpec>
+#                </branches>
+#                <userRemoteConfigs>
+#                  <hudson.plugins.git.UserRemoteConfig>
+#                    <url>https://${{ parameters.repo.host }}/${{ parameters.githubOrg }}/${{ parameters.repoName }}</url>
+#                    <!-- <credentialsId>github-pat-for-ci</credentialsId> -->
+#                  </hudson.plugins.git.UserRemoteConfig>
+#                </userRemoteConfigs>
+#                <browser class="hudson.plugins.git.browser.GithubWeb">
+#                  <url>https://${{ parameters.repo.host }}${{ values.sourceControl }}/${{ parameters.githubOrg }}/${{ parameters.repoName }}</url>
+#                </browser>
+#                <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+#                <submoduleCfg class="empty-list"/>
+#                <extensions/>
+#              </scm>
+#              <scriptPath>Jenkinsfile</scriptPath> <!-- La ruta a tu Jenkinsfile dentro del repositorio -->
+#              <lightweight>true</lightweight>
+#            </definition>
+#            <triggers/>
+#            <disabled>false</disabled>
+#          </flow-definition>
 
   output:
     links:
