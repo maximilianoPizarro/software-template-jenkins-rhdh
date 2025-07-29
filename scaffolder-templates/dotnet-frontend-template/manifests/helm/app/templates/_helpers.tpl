@@ -35,7 +35,7 @@ backstage.io/kubernetes-id: ${{values.component_id}}
 {{- define "jenkins-template.labels" -}}
 backstage.io/kubernetes-id: ${{values.component_id}}
 helm.sh/chart: {{ include "jenkins-template.chart" . }}
-app.openshift.io/runtime: quarkus
+app.openshift.io/runtime: dotnet
 {{ include "jenkins-template.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}

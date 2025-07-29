@@ -1,7 +1,7 @@
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
-  name: {{ .Values.app.name }}-dev
+  name: {{ .Values.app.name }}-dev-build
 spec:
   output:
     to:
