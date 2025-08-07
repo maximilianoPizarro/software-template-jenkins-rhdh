@@ -67,7 +67,7 @@ spec:
           title: Jenkins Server
           type: string
           description: The Jenkins server to use
-          default: http://jenkins-jenkins.apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+          default: http://jenkins-jenkins.apps.cluster-cgtdr.cgtdr.sandbox141.opentlc.com
     - title: Provide information about the CI method
       required:
         - ci
@@ -120,7 +120,7 @@ spec:
                   title: Image Host
                   type: string
                   description: Host for storing image
-                  default: quay-6xdx6.apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+                  default: quay-cgtdr.apps.cluster-cgtdr.cgtdr.sandbox141.opentlc.com
                 image_organization:
                   title: Organization
                   type: string
@@ -143,9 +143,9 @@ spec:
               title: Repo Host
               type: string
               description: Your SCM host
-              default: gitlab-gitlab.apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+              default: gitlab-gitlab.apps.cluster-cgtdr.cgtdr.sandbox141.opentlc.com
               enum:
-                - gitlab-gitlab.apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+                - gitlab-gitlab.apps.cluster-cgtdr.cgtdr.sandbox141.opentlc.com
             owner:
               title: Repo Owner
               type: string
@@ -173,7 +173,7 @@ spec:
           imageRepository: ${{ parameters.imageRepository }}
           port: ${{ parameters.port }}
           ci: ${{ parameters.ci }}
-          cluster: .apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+          cluster: .apps.cluster-cgtdr.cgtdr.sandbox141.opentlc.com
           destination: ${{ parameters.repo.owner }}/${{ parameters.component_id }}
           quay_destination: ${{ parameters.image_host}}/${{ parameters.image_organization}}/${{ parameters.component_id }}
 
@@ -198,7 +198,7 @@ spec:
           imageRepository: ${{ parameters.imageRepository }}
           port: ${{ parameters.port }}
           ci: ${{ parameters.ci }}
-          cluster: .apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+          cluster: .apps.cluster-cgtdr.cgtdr.sandbox141.opentlc.com
           destination: ${{ parameters.repo.owner }}/${{ parameters.component_id }}
           quay_destination: ${{ parameters.image_host}}/${{ parameters.image_organization}}/${{ parameters.component_id }}
           
@@ -224,7 +224,7 @@ spec:
           port: ${{ parameters.port }}
           jenkinsInstance: default-jenkins
           ci: ${{ parameters.ci }}
-          cluster: .apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+          cluster: .apps.cluster-cgtdr.cgtdr.sandbox141.opentlc.com
           quay_destination: ${{ parameters.image_host}}/${{ parameters.image_organization}}/${{ parameters.component_id }}
 
     - id: publish
@@ -254,7 +254,7 @@ spec:
           source_repository: ${{ parameters.repo.host }}/${{ parameters.repo.owner }}/${{parameters.component_id}}.git
           repository_name: ${{parameters.component_id}}
           git_owner: ${{ parameters.repo.owner }}
-          cluster: .apps.cluster-6xdx6.6xdx6.sandbox1466.opentlc.com
+          cluster: .apps.cluster-cgtdr.cgtdr.sandbox141.opentlc.com
           namespace: ${{ parameters.component_id }}-dev
           image_registry: ${{ parameters.image_registry }}
           image_host: ${{ parameters.image_host }}
